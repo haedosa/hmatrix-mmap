@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 -- | Functions to represent a 'Vector' on disk in efficient, if
 -- unportable, ways.
@@ -48,8 +49,9 @@ import Foreign.ForeignPtr
 import Foreign.Ptr
 import Foreign.Storable
 
-import qualified Data.Packed.Development as I
-import qualified Data.Packed.Vector as I
+import qualified Numeric.LinearAlgebra.Devel as I
+import qualified Numeric.LinearAlgebra.HMatrix as I
+-- import qualified Data.Packed.Vector as I
 import Data.Int
 
 ---------------------------
@@ -63,8 +65,8 @@ import Data.Int
 unsafeMMapVector :: forall a. Storable a => FilePath -- ^ Path of the file to map
                                          -> Maybe (Int64, Int) -- ^ 'Nothing' to map entire file into memory, otherwise 'Just (fileOffset, elementCount)'
                                          -> IO (I.Vector a)
-unsafeMMapVector path range = 
-  do (foreignPtr, offset, size) <- mmapFileForeignPtr path ReadOnly $ 
+unsafeMMapVector path range =
+  do (foreignPtr, offset, size) <- mmapFileForeignPtr path ReadOnly $
         case range of
           Nothing -> Nothing
           Just (start, length) -> Just (start, length * sizeOf (undefined :: a))
@@ -91,7 +93,7 @@ unsafeMMapVector path range =
 -- The number of vectors in the list is returned because it's often
 -- needed, yet calculating it using 'length' would demand the whole
 -- list.
-unsafeLazyMMapVectors :: forall a. Storable a => FilePath -- ^ Path of the file to map
+unsafeLazyMMapVectors :: forall a. (Storable a, I.Container I.Vector a) => FilePath -- ^ Path of the file to map
                       -> Maybe (Int64, Int64)
                       -- ^ 'Nothing' to map entire file into memory,
                       -- otherwise @'Just' (fileOffset, totalElementCount)@
@@ -113,7 +115,7 @@ unsafeLazyMMapVectors path range vsize = do
         vecSize = fI vsize * eltSize
         vecTooBigError = fail "The requested vector size can't be mapped into memory"
 
-unsafeLazyMMapVectors' :: forall a. Storable a => Int64
+unsafeLazyMMapVectors' :: forall a. (Storable a, I.Container I.Vector a) => Int64
                        -> FilePath
                        -> Maybe (Int64, Int64)
                        -> Int
@@ -138,7 +140,7 @@ unsafeLazyMMapVectors' fileSize
         return (offset, fI nelts)
 
       splitVecs :: I.Vector a -> [I.Vector a]
-      splitVecs bigVec = let nvecs = I.dim bigVec `div` numEltsPerVec
+      splitVecs bigVec = let nvecs = I.size bigVec `div` numEltsPerVec
                          in I.takesV (replicate nvecs numEltsPerVec) bigVec
 
       mmapAll :: IO [I.Vector a]

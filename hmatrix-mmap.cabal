@@ -20,4 +20,6 @@ Library
   Exposed-Modules:
         Data.Packed.Vector.MMap
 
-  Build-Depends: base >= 2 && < 5, mmap >= 0.5.4, hmatrix >= 0.10
+  Build-Depends: base
+               , mmap
+               , hmatrix
